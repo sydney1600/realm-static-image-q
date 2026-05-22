@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Multimodal Task Gallery — Screenspot-Pro + Workdocs + General VQA</title>
+<style>
+    :root{--bg:#fafafa;--card:#fff;--muted:#6b7280;--accent:#2563eb;--box:#18a049}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:#111}
+    .wrap{max-width:1200px;margin:28px auto;padding:24px}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
+    header > div:first-child{min-width:0}
+    .header-actions{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;justify-content:flex-end;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:4px;box-shadow:0 1px 2px rgba(16,24,40,.04);white-space:nowrap}
+    h1{font-size:20px;margin:0}
+    p.help{color:var(--muted);margin:6px 0 0;font-size:13px}
+
+    .intro-card{margin-bottom:16px;padding:18px 20px;border:1px solid #dbeafe;background:linear-gradient(180deg,#fff,#f8fbff);border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+    .intro-kicker{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700}
+    .intro-card h2{font-size:19px;margin:0 0 8px;color:#111827}
+    .intro-card p{margin:0;color:#374151;font-size:14px;line-height:1.55;max-width:920px}
+    .intro-points{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+    .intro-point{padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    .intro-point strong{display:block;font-size:13px;color:#111827;margin-bottom:3px}
+    .intro-point span{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:18px}
+    .card{background:var(--card);border:1px solid #e6e9ee;border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(16,24,40,0.04)}
+    .card.selected{outline:2px solid rgba(37,99,235,.45);outline-offset:2px}
+
+    /* The overlay coordinates are normalized to the original screenshot.
+       Do not crop the image; otherwise the box no longer maps to the visible pixels. */
+    .thumb-wrap{position:relative;border-radius:6px;overflow:hidden;border:1px solid #eee;background:#f3f4f6}
+    .thumb{display:block;width:100%;height:auto;object-fit:contain}
+    .oracle-box{position:absolute;border:3px solid var(--box);box-shadow:0 0 0 1px rgba(255,255,255,.8),0 2px 8px rgba(24,160,73,.18);pointer-events:none;z-index:2}
+    .oracle-box::after{content:"";position:absolute;inset:-7px;border:1px dashed rgba(24,160,73,.55);border-radius:2px}
+    .meta{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
+    .meta .title{font-size:14px;color:#111;font-weight:600;overflow-wrap:anywhere}
+    .meta .task{font-size:12px;color:var(--muted);white-space:nowrap}
+    .prompt{background:#f8fafc;border:1px solid #eef2f7;border-radius:6px;padding:8px 10px;margin-top:10px;font-family:inherit;font-size:13px;white-space:pre-wrap}
+    .links{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:6px 10px;border-radius:8px;background:transparent;border:1px solid #d1d5db;color:#111;font-size:13px;text-decoration:none;cursor:pointer;line-height:1.2;white-space:nowrap}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 1px 2px rgba(37,99,235,.18)}
+    .header-actions .btn{border-color:transparent;background:transparent}
+    .header-actions .btn:hover{background:#f3f4f6}
+    .header-actions .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    footer{margin-top:28px;color:var(--muted);font-size:13px}
+
+    .modal{position:fixed;inset:0;background:rgba(15,23,42,.78);display:none;align-items:center;justify-content:center;padding:24px;z-index:1000}
+    .modal.open{display:flex}
+    .modal-panel{max-width:96vw;max-height:96vh;background:#fff;border-radius:12px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+    .modal-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .modal-title{font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .modal-stage{position:relative;display:inline-block;max-width:92vw;max-height:82vh;overflow:auto;background:#f3f4f6;border-radius:8px;border:1px solid #e5e7eb}
+    .modal-stage img{display:block;max-width:92vw;max-height:82vh;width:auto;height:auto}
+    .modal-stage .oracle-box{z-index:3}
+    .close{font-size:13px;line-height:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;cursor:pointer}
+
+
+
+    .skills-panel{margin-bottom:18px}
+    .skills-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+    .skills-head h2{font-size:18px;margin:0 0 4px}
+    .skills-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .skills-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;align-items:start}
+    .skill-steps{display:grid;gap:10px}
+    .skill-step{display:grid;grid-template-columns:32px 1fr;gap:10px;padding:10px;border:1px solid #eef2f7;border-radius:8px;background:#fbfdff}
+    .step-num{width:28px;height:28px;border-radius:999px;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+    .skill-step strong{display:block;font-size:13px;margin-bottom:3px}
+    .skill-step span{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+    .command-box{background:#0f172a;color:#e5e7eb;border-radius:10px;padding:12px;overflow:auto;border:1px solid #111827}
+    .command-box .caption{font-size:12px;color:#93c5fd;margin-bottom:8px}
+    .command-box pre{margin:0;white-space:pre-wrap;font-size:12px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
+    .skill-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .skill-tab{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .skill-tab.active{background:#2563eb;border-color:#2563eb;color:#fff}
+    .answer-json{margin-top:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px}
+    .answer-json label{display:block;color:#374151;font-size:12px;font-weight:600;margin-bottom:6px}
+    .answer-json code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:12px;white-space:pre-wrap;color:#111827}
+    .copy-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:8px}
+
+    @media (max-width:900px){.skills-grid{grid-template-columns:1fr}.intro-points{grid-template-columns:1fr}}
+
+    .task-switch{display:flex;gap:8px;align-items:center;margin:0 0 16px;padding:5px;background:#eef2f7;border:1px solid #e5e7eb;border-radius:14px;width:max-content;max-width:100%}
+    .task-switch button{appearance:none;border:0;background:transparent;color:#374151;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap}
+    .task-switch button:hover{background:rgba(255,255,255,.72)}
+    .task-switch button.active{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+    .task-panel{display:none}
+    .task-panel.active{display:block}
+    .workdocs-hero{margin-bottom:16px;padding:18px 20px;border:1px solid #e9d5ff;background:linear-gradient(180deg,#fff,#fbf7ff);border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+    .workdocs-hero h2{font-size:18px;margin:0 0 8px;color:#111827}
+    .workdocs-hero p{margin:0;color:#374151;font-size:14px;line-height:1.55;max-width:940px}
+    .workdocs-layout{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
+    .workdoc-list{display:grid;gap:12px}
+    .workdoc-card{background:var(--card);border:1px solid #e6e9ee;border-radius:12px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+    .workdoc-card h3{font-size:15px;margin:0 0 6px;color:#111827}
+    .workdoc-card p{font-size:13px;color:#4b5563;line-height:1.45;margin:0 0 10px}
+    .path-row{display:grid;gap:6px;margin:10px 0}
+    .path-row code{display:block;padding:7px 8px;border-radius:7px;background:#f8fafc;border:1px solid #eef2f7;color:#374151;font-size:12px;white-space:nowrap;overflow:auto}
+    .doc-preview{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;position:sticky;top:14px}
+    .doc-preview h3{font-size:15px;margin:0 0 8px}
+    .doc-preview h4{font-size:13px;margin:14px 0 6px;color:#111827}
+    .doc-preview ol{margin:0;padding-left:20px;color:#374151;font-size:13px;line-height:1.5}
+    .doc-preview pre{margin:0;white-space:pre-wrap;background:#f8fafc;border:1px solid #eef2f7;border-radius:8px;padding:10px;font-size:12px;line-height:1.45;color:#374151;max-height:190px;overflow:auto}
+    .folder-tree{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;background:#0f172a;color:#e5e7eb;border-radius:10px;padding:12px;font-size:12px;line-height:1.55;overflow:auto;margin-top:10px}
+
+
+    .intro-kicker.purple{background:#f3e8ff;color:#7e22ce}
+    .workdoc-card{cursor:pointer;transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease}
+    .workdoc-card:hover{border-color:#c4b5fd;box-shadow:0 4px 12px rgba(91,33,182,.08);transform:translateY(-1px)}
+    .workdoc-card.selected{outline:2px solid rgba(124,58,237,.35);outline-offset:2px;border-color:#c4b5fd}
+    .folder-tree.compact{margin-top:4px}
+    .doc-preview.rich{padding:0;overflow:hidden}
+    .preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 14px 10px;border-bottom:1px solid #eef2f7;background:#fbfbff}
+    .doc-label{text-transform:uppercase;letter-spacing:.04em;font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:4px}
+    .rubric-summary{font-size:12px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:6px 9px;white-space:nowrap}
+    .doc-note{font-size:12px;color:var(--muted);line-height:1.45;margin:0;padding:10px 14px;border-bottom:1px solid #eef2f7}
+    .doc-tabs{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #eef2f7;background:#fff;position:sticky;top:0;z-index:2}
+    .doc-tab{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .doc-tab.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+    .doc-view{display:none;padding:12px 14px;max-height:620px;overflow:auto}
+    .doc-view.active{display:block}
+    .question-list{margin:0;padding-left:22px;color:#1f2937;font-size:13px;line-height:1.55}
+    .question-list li{padding:6px 0;border-bottom:1px solid #f1f5f9}
+    .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:10px}
+    .rubric-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+    .rubric-table th,.rubric-table td{padding:8px 9px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top}
+    .rubric-table th{background:#f8fafc;color:#374151;font-weight:700;position:sticky;top:0}
+    .rubric-table td:first-child,.rubric-table td:nth-child(2){white-space:nowrap;color:#374151;font-weight:650}
+    .status{display:inline-flex;align-items:center;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:700}
+    .status.pass{background:#dcfce7;color:#166534}
+    .status.fail{background:#fee2e2;color:#991b1b}
+
+    @media (max-width:760px){.grid{grid-template-columns:1fr}.task-switch{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.task-switch button{width:100%}.workdocs-layout{grid-template-columns:1fr}.doc-preview{position:static}header{align-items:stretch;flex-direction:column}.header-actions{width:100%;justify-content:stretch;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.header-actions .btn{width:100%;padding-left:8px;padding-right:8px}}
+
+    /* General VQA tab: match the Screenspot-Pro gallery treatment. */
+    .vqa-hero{margin-bottom:16px;padding:18px 20px;border:1px solid #dbeafe;background:linear-gradient(180deg,#fff,#f8fbff);border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+    .vqa-hero h2{font-size:19px;margin:0 0 8px;color:#111827}
+    .vqa-hero p{margin:0;color:#374151;font-size:14px;line-height:1.55;max-width:960px}
+    .vqa-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+    .vqa-stat{display:flex;align-items:center;justify-content:center;min-height:40px;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;color:#374151;font-size:12px;font-weight:650;text-align:center}
+    .vqa-category-block{margin-top:18px}
+    .vqa-category-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:10px}
+    .vqa-category-head h3{font-size:16px;margin:0 0 4px;color:#111827}
+    .vqa-category-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.4}
+    .vqa-category-count{white-space:nowrap;font-size:12px!important;color:#2563eb!important;background:#eff6ff;border:1px solid #dbeafe;border-radius:999px;padding:5px 9px;font-weight:700}
+    .vqa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+    .vqa-card{background:var(--card);border:1px solid #e6e9ee;border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden}
+    .vqa-image-link{display:block;border-radius:6px;overflow:hidden;border:1px solid #eee;background:#f3f4f6}
+    .vqa-image{display:block;width:100%;height:260px;object-fit:contain;background:#f8fafc}
+    .vqa-card-body{padding-top:10px}
+    .vqa-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .vqa-id{font-size:14px;color:#111;font-weight:700;overflow-wrap:anywhere}
+    .vqa-pill{font-size:12px;color:var(--muted);white-space:nowrap}
+    .qa-block{display:grid;gap:8px}
+    .qa-block > div{background:#f8fafc;border:1px solid #eef2f7;border-radius:8px;padding:9px 10px}
+    .qa-label{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;margin-bottom:4px}
+    .qa-text{font-size:13px;color:#111827;line-height:1.45;white-space:pre-wrap}
+    .qa-answer{display:inline-flex;max-width:100%;font-size:13px;font-weight:750;color:#065f46;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:999px;padding:4px 8px;line-height:1.35;white-space:pre-wrap}
+    .vqa-paths{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px}
+    .vqa-paths code{display:block;padding:7px 8px;border-radius:7px;background:#fff;border:1px solid #eef2f7;color:#374151;font-size:12px;white-space:nowrap;overflow:auto}
+
+
+    @media (max-width:900px){.vqa-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.vqa-grid{grid-template-columns:1fr}.vqa-image{height:auto;max-height:360px}}
+    @media (max-width:560px){.vqa-stats{grid-template-columns:1fr}.vqa-category-head{align-items:flex-start;flex-direction:column}.vqa-image{height:auto;max-height:300px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div>
+<h1>Multimodal Task Gallery</h1>
+<p class="help">Interactive demos for Screenshot UI grounding, Multi-document reasoning, and General VQA examples.</p>
+</div>
+</header>
+<nav class="task-switch" aria-label="Task family tabs">
+  <button class="task-tab active" type="button" data-panel="screenspot-panel">Screenshot UI grounding</button>
+  <button class="task-tab" type="button" data-panel="workdocs-panel">Multi-document reasoning</button>
+  <button class="task-tab" type="button" data-panel="general-vqa-panel">General VQA</button>
+</nav>
+
+<div class="task-panel active" id="screenspot-panel">
+<section class="intro-card" id="overview">
+  <div class="intro-kicker">Screenshot UI grounding demo</div>
+  <h2>UI grounding as a prerequisite for computer-use agents</h2>
+  <p>This tab targets the Screenspot-Pro benchmark setting: given a UI screenshot and a natural-language instruction, the agent must understand the interface, identify the requested UI element, and ground the answer as normalized coordinates. The task focuses on multimodal UI understanding and precise visual grounding, which are core preconditions before a CUA agent can reliably click, type, or operate software. Each task also comes with lightweight inspection tools, so the agent can crop, zoom, annotate, and verify small interface targets before writing the final JSON answer.</p>
+  <div class="intro-points">
+    <div class="intro-point"><strong>Multimodal UI understanding</strong><span>Read visual layout, text labels, icons, and interaction affordances from screenshots.</span></div>
+    <div class="intro-point"><strong>Grounding before action</strong><span>Return precise bbox or point coordinates before attempting downstream UI control.</span></div>
+    <div class="intro-point"><strong>Tool-assisted solving</strong><span>Use bundled crop, zoom, and grid annotation scripts to inspect difficult targets.</span></div>
+  </div>
+</section>
+
+<section class="card" id="system-prompt" style="margin-bottom:16px">
+<pre style="white-space:pre-wrap;margin:0;padding:12px;background:#f6f8fb;border-radius:8px;border:1px solid #e6e9ee">Locate the requested target in the screenshot and write strict JSON to `./answer.json`.
+Use normalized coordinates 0-100 (top-left = 0,0). Return a bounding box `{"bbox": [x1, y1, x2, y2]}` or a point `{"point": [x, y]}` as required.
+Read image files directly with your native image reader (do not use `cat`). You may crop, zoom, or annotate using `./skills/screen-tools` to inspect small UI elements. Always verify the output file contains valid JSON and all coordinates are between 0 and 100.</pre>
+</section>
+
+<section class="card skills-panel" id="skills">
+  <div class="skills-head">
+    <div>
+      <h2>Agent skill demo: screen-tools</h2>
+      <p>These commands mirror the helper skill an agent can use while solving screenshot grounding tasks. They are written as if the agent is inside a task's <code>environment/</code> folder. All coordinates below are normalized 0-100, so they match the green boxes in this gallery.</p>
+          <p class="note">Skill file location inside the shared <code>multimodal</code> folder: <code>screenshot-grounding/click-an-oval-button-without-image/environment/skills/screen-tools/SKILL.md</code>. Commands intentionally use relative paths so the whole folder can be moved or shared without editing them.</p>
+    </div>
+    <a class="btn" href="screenshot-grounding/click-an-oval-button-without-image/environment/skills/screen-tools/SKILL.md" target="_blank" rel="noopener noreferrer">Open SKILL.md</a>
+  </div>
+  <div class="skills-grid">
+    <div class="skill-steps">
+      <div class="skill-step">
+        <div class="step-num">1</div>
+        <div><strong>List screenshots</strong><span>Find candidate images under <code>./screenshots</code> before choosing which screenshot to inspect.</span></div>
+      </div>
+      <div class="skill-step">
+        <div class="step-num">2</div>
+        <div><strong>Crop or zoom small targets</strong><span>Use <code>crop.py</code> for exact regions and <code>zoom.py</code> when an icon or text label is too small.</span></div>
+      </div>
+      <div class="skill-step">
+        <div class="step-num">3</div>
+        <div><strong>Annotate with a grid</strong><span>Use <code>annotate.py</code> to draw 10% coordinate lines, then inspect the generated PNG visually.</span></div>
+      </div>
+      <div class="skill-step">
+        <div class="step-num">4</div>
+        <div><strong>Write strict JSON</strong><span>Save only <code>{"bbox": [...]}</code> or <code>{"point": [...]}</code> to <code>./answer.json</code>.</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="skill-tabs" aria-label="Skill command examples">
+        <button class="skill-tab active" data-skill="crop" type="button">Crop</button>
+        <button class="skill-tab" data-skill="zoom" type="button">Zoom</button>
+        <button class="skill-tab" data-skill="annotate" type="button">Annotate</button>
+        <button class="skill-tab" data-skill="answer" type="button">Answer JSON</button>
+      </div>
+      <div class="command-box">
+        <div class="caption" id="skill-caption">Crop a candidate region around the target</div>
+        <pre id="skill-command">./skills/screen-tools/scripts/crop.py ./screenshots/Booking.com_Screenshot_2026-05-20.png \
+  --box 17 50 30 60 \
+  --out ./crops/booking-free-cancellation.png</pre>
+      </div>
+      <div class="copy-row">
+        <button class="btn" id="copy-skill-command" type="button">Copy command</button>
+        <button class="btn" id="load-card-command" type="button">Use selected card bbox</button>
+      </div>
+      <div class="answer-json">
+        <label>Example final output</label>
+        <code id="answer-json">{"bbox": [19.76, 53.7, 27.57, 56.83]}</code>
+      </div>
+      <p class="note">Tip: click any gallery card first, then use “Use selected card bbox” to generate crop/zoom/answer examples for that screenshot.</p>
+    </div>
+  </div>
+</section>
+
+<section class="grid" id="all">
+<!-- Cards generated by hand to reference local screenshots -->
+<article class="card" data-bbox="19.76,53.7,27.57,56.83" data-image="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="19.76,53.7,27.57,56.83" data-image="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png" href="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png">
+<img alt="Booking.com screenshot" class="thumb" loading="lazy" src="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png"/>
+</a>
+<div class="oracle-box" data-bbox="19.76,53.7,27.57,56.83"></div>
+</div>
+<div class="meta">
+<div class="title">apply-filter-in-booking-com</div>
+<div class="task">Booking.com</div>
+</div>
+<pre class="prompt">Click the "Free Cancellation" filter in the hotel search filters panel.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="19.76,53.7,27.57,56.83" data-image="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png" href="screenshot-grounding/apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="88.84,7.91,92.95,14.7" data-image="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="88.84,7.91,92.95,14.7" data-image="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png" href="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png">
+<img alt="Epic Game Store" class="thumb" loading="lazy" src="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png"/>
+</a>
+<div class="oracle-box" data-bbox="88.84,7.91,92.95,14.7"></div>
+</div>
+<div class="meta">
+<div class="title">epic-game-store</div>
+<div class="task">Epic Game Store</div>
+</div>
+<pre class="prompt">Click the social icon on the Epic game store desktop app</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="88.84,7.91,92.95,14.7" data-image="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png" href="screenshot-grounding/epic-game-store/environment/screenshots/12. Epic Game Store.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="29.36,53.48,35.42,56.26" data-image="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="29.36,53.48,35.42,56.26" data-image="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png" href="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png">
+<img alt="AWS Console" class="thumb" loading="lazy" src="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png"/>
+</a>
+<div class="oracle-box" data-bbox="29.36,53.48,35.42,56.26"></div>
+</div>
+<div class="meta">
+<div class="title">aws-console</div>
+<div class="task">AWS Console</div>
+</div>
+<pre class="prompt">Click the "CloudFront" service link in the "Recently Visited" section on my AWS Console Home page.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="29.36,53.48,35.42,56.26" data-image="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png" href="screenshot-grounding/aws-console/environment/screenshots/21. AWS Console.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="41.79,37.39,45.18,39.9" data-image="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="41.79,37.39,45.18,39.9" data-image="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png" href="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png">
+<img alt="Yahoo Finance" class="thumb" loading="lazy" src="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png"/>
+</a>
+<div class="oracle-box" data-bbox="41.79,37.39,45.18,39.9"></div>
+</div>
+<div class="meta">
+<div class="title">yahoo-finance-screens</div>
+<div class="task">Yahoo Finance</div>
+</div>
+<pre class="prompt">Click the Volume sortable column header.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="41.79,37.39,45.18,39.9" data-image="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png" href="screenshot-grounding/yahoo-finance-screens/environment/screenshots/Screenshot 2026-05-19 225939.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="94.22,46,95.59,49.31" data-image="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="94.22,46,95.59,49.31" data-image="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png" href="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png">
+<img alt="Docker Desktop" class="thumb" loading="lazy" src="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png"/>
+</a>
+<div class="oracle-box" data-bbox="94.22,46,95.59,49.31"></div>
+</div>
+<div class="meta">
+<div class="title">docker-desktop</div>
+<div class="task">Docker</div>
+</div>
+<pre class="prompt">Click the trash icon in the "ACTIONS" column to delete the container named "mysql_cont01".</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="94.22,46,95.59,49.31" data-image="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png" href="screenshot-grounding/docker-desktop/environment/screenshots/17. Docker.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="69.88,4.15,74.2,9.62" data-image="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="69.88,4.15,74.2,9.62" data-image="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg" href="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg">
+<img alt="Miro" class="thumb" loading="lazy" src="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg"/>
+</a>
+<div class="oracle-box" data-bbox="69.88,4.15,74.2,9.62"></div>
+</div>
+<div class="meta">
+<div class="title">click-an-icon-with-multiple-function</div>
+<div class="task">Miro</div>
+</div>
+<pre class="prompt">Click the Facilitation tools and reactions icon (indicated by the timer, thumb, and horn images) at the top corner of the page</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="69.88,4.15,74.2,9.62" data-image="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg" href="screenshot-grounding/click-an-icon-with-multiple-function/environment/screenshots/Miro Brainstorming.jpg">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="5.28,15.67,6.6,17.84" data-image="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="5.28,15.67,6.6,17.84" data-image="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png" href="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png">
+<img alt="Word toolbar" class="thumb" loading="lazy" src="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png"/>
+</a>
+<div class="oracle-box" data-bbox="5.28,15.67,6.6,17.84"></div>
+</div>
+<div class="meta">
+<div class="title">icon-targeting-in-microsoft-word-toolbar</div>
+<div class="task">Word toolbar</div>
+</div>
+<pre class="prompt">Click the Format Painter icon in the Home tab toolbar.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="5.28,15.67,6.6,17.84" data-image="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png" href="screenshot-grounding/icon-targeting-in-microsoft-word-toolbar/environment/screenshots/Captura de tela 2026-05-21 073649.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="58.81,1.79,67.19,9.68" data-image="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="58.81,1.79,67.19,9.68" data-image="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg" href="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg">
+<img alt="Figma recent files" class="thumb" loading="lazy" src="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg"/>
+</a>
+<div class="oracle-box" data-bbox="58.81,1.79,67.19,9.68"></div>
+</div>
+<div class="meta">
+<div class="title">click-an-oval-button-without-image</div>
+<div class="task">Figma</div>
+</div>
+<pre class="prompt">Click FigJam button to create a new jam board on top of the page</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="58.81,1.79,67.19,9.68" data-image="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg" href="screenshot-grounding/click-an-oval-button-without-image/environment/screenshots/Figma Recent Files.jpg">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="89.91,7.99,97.72,12.86" data-image="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="89.91,7.99,97.72,12.86" data-image="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png" href="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png">
+<img alt="iOS Wi-Fi settings" class="thumb" loading="lazy" src="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png"/>
+</a>
+<div class="oracle-box" data-bbox="89.91,7.99,97.72,12.86"></div>
+</div>
+<div class="meta">
+<div class="title">toggle-wi-fi-setting-in-ios-settings</div>
+<div class="task">iOS Settings</div>
+</div>
+<pre class="prompt">Toggle the Wi-Fi switch in the iOS Settings panel.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="89.91,7.99,97.72,12.86" data-image="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png" href="screenshot-grounding/toggle-wi-fi-setting-in-ios-settings/environment/screenshots/iOS_Settings_Screenshot_2026-05-20.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="40.39,71.99,42.01,73.49" data-image="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="40.39,71.99,42.01,73.49" data-image="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png" href="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png">
+<img alt="GitHub code view" class="thumb" loading="lazy" src="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png"/>
+</a>
+<div class="oracle-box" data-bbox="40.39,71.99,42.01,73.49"></div>
+</div>
+<div class="meta">
+<div class="title">text-targeting-in-github-code-view</div>
+<div class="task">GitHub</div>
+</div>
+<pre class="prompt">Click on the $content_width value assigned on line 124</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="40.39,71.99,42.01,73.49" data-image="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png" href="screenshot-grounding/text-targeting-in-github-code-view/environment/screenshots/Captura de tela 2026-05-20 074936.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="0.01,30.35,4.22,38" data-image="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="0.01,30.35,4.22,38" data-image="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png" href="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png">
+<img alt="VS Code" class="thumb" loading="lazy" src="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png"/>
+</a>
+<div class="oracle-box" data-bbox="0.01,30.35,4.22,38"></div>
+</div>
+<div class="meta">
+<div class="title">vs-code</div>
+<div class="task">Visual Studio Code</div>
+</div>
+<pre class="prompt">Click the "run and debug" icon from the activity bar on my VS Code</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="0.01,30.35,4.22,38" data-image="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png" href="screenshot-grounding/vs-code/environment/screenshots/11. VS Code.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="55.2,2.31,57.99,6.6" data-image="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="55.2,2.31,57.99,6.6" data-image="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png" href="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png">
+<img alt="Figma icon targeting" class="thumb" loading="lazy" src="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png"/>
+</a>
+<div class="oracle-box" data-bbox="55.2,2.31,57.99,6.6"></div>
+</div>
+<div class="meta">
+<div class="title">icon-targeting-in-figma</div>
+<div class="task">Figma icon</div>
+</div>
+<pre class="prompt">Click on the search icon in the top navigation bar to search for files, teams, or projects</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="55.2,2.31,57.99,6.6" data-image="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png" href="screenshot-grounding/icon-targeting-in-figma/environment/screenshots/figma_search_icon_targeting_example.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="18.24,40.34,23.76,43.1" data-image="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="18.24,40.34,23.76,43.1" data-image="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png" href="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png">
+<img alt="Open Payroll" class="thumb" loading="lazy" src="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png"/>
+</a>
+<div class="oracle-box" data-bbox="18.24,40.34,23.76,43.1"></div>
+</div>
+<div class="meta">
+<div class="title">button-targeting-for-open-payroll-processing</div>
+<div class="task">Payroll UI</div>
+</div>
+<pre class="prompt">Click on the Go to Payroll button located under the Upcoming payroll section on the dashboard.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="18.24,40.34,23.76,43.1" data-image="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png" href="screenshot-grounding/button-targeting-for-open-payroll-processing/environment/screenshots/Open Payroll.png">Open image</a>
+</div>
+</article>
+<article class="card" data-bbox="91.58,12.96,97.74,19.39" data-image="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png">
+<div class="thumb-wrap">
+<a aria-label="Open image with overlay" class="open-overlay" data-bbox="91.58,12.96,97.74,19.39" data-image="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png" href="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png">
+<img alt="Amazon cart" class="thumb" loading="lazy" src="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png"/>
+</a>
+<div class="oracle-box" data-bbox="91.58,12.96,97.74,19.39"></div>
+</div>
+<div class="meta">
+<div class="title">amazon-cart</div>
+<div class="task">Amazon cart</div>
+</div>
+<pre class="prompt">Click the shopping cart icon in the site header to check whether there are any items currently in my cart.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-bbox="91.58,12.96,97.74,19.39" data-image="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png" href="screenshot-grounding/amazon-cart/environment/screenshots/02. Amazon cart.png">Open image</a>
+</div>
+</article>
+<article class="card" data-image="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png">
+<a aria-label="Open image with overlay" class="open-overlay" data-image="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png" href="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png">
+<img alt="Mixpanel app" class="thumb" loading="lazy" src="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png"/>
+</a>
+<div class="meta">
+<div class="title">text-targeting-in-mixpanel-app</div>
+<div class="task">Mixpanel</div>
+</div>
+<pre class="prompt">Click on event property name which is titled as '$origin_start' on Mixpanel user interface.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-image="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png" href="screenshot-grounding/text-targeting-in-mixpanel-app/environment/screenshots/ss_mixpanel_app.png">Open image</a>
+</div>
+</article>
+<article class="card" data-image="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png">
+<a aria-label="Open image with overlay" class="open-overlay" data-image="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png" href="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png">
+<img alt="Binance" class="thumb" loading="lazy" src="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png"/>
+</a>
+<div class="meta">
+<div class="title">binance-payment-method</div>
+<div class="task">Binance</div>
+</div>
+<pre class="prompt">Click the "dark mode toggle" on the Binance page to turn dark mode off.</pre>
+<div class="links">
+<a aria-label="Open image with overlay" class="btn primary open-overlay" data-image="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png" href="screenshot-grounding/binance-payment-method/environment/screenshots/05. Binance.png">Open image</a>
+</div>
+</article>
+</section>
+</div>
+
+<div class="task-panel" id="workdocs-panel">
+<section class="workdocs-hero">
+  <div class="intro-kicker purple">Workdocs finance reasoning demo</div>
+  <h2>Expert-level multi-document reasoning over financial PDFs and spreadsheets</h2>
+  <p>This tab is separate from Screenspot-Pro. It displays <code>workdocs</code> tasks: expert-level multi-document reasoning problems over financial reports, PDFs, tables, and spreadsheets. These examples emphasize evidence extraction, cross-file reconciliation, quantitative reasoning, and rubric-driven grading. Each task folder contains a <code>Prompt.txt</code> with the questions, a <code>Rubrics.txt</code> with grading criteria, and a parallel <code>Files/</code> bundle with the source materials.</p>
+  <div class="intro-points">
+    <div class="intro-point"><strong>Multi-document evidence</strong><span>Reason across several files instead of one screenshot.</span></div>
+    <div class="intro-point"><strong>Finance-domain calculations</strong><span>Compute movements, shares, percentage changes, and comparisons.</span></div>
+    <div class="intro-point"><strong>Programmatic rubric view</strong><span>Parse rubric text into criteria, weights, and pass/fail status.</span></div>
+  </div>
+</section>
+
+<section class="workdocs-layout" aria-label="Workdocs tasks">
+  <div class="workdoc-list">
+    <article class="workdoc-card selected" data-workdoc="V-CBOB-Ukraine">
+      <h3>V-CBOB-Ukraine</h3>
+      <p>Year-end banking shift task using CBOB statement files. The prompt asks for numeric movements and percentage changes across the provided statements.</p>
+      <div class="path-row">
+        <code>workdocs/V-CBOB-Ukraine/Prompt.txt</code>
+        <code>workdocs/V-CBOB-Ukraine/Rubrics.txt</code>
+        <code>workdocs/V-CBOB-Ukraine/Files/</code>
+      </div>
+      <div class="links">
+        <a class="btn primary" href="workdocs/V-CBOB-Ukraine/Prompt.txt" target="_blank" rel="noopener noreferrer">Open Prompt</a>
+        <a class="btn" href="workdocs/V-CBOB-Ukraine/Rubrics.txt" target="_blank" rel="noopener noreferrer">Open Rubrics</a>
+        <a class="btn" href="workdocs/V-CBOB-Ukraine/Files/" target="_blank" rel="noopener noreferrer">Open Files folder</a>
+      </div>
+    </article>
+
+    <article class="workdoc-card" data-workdoc="V-Experian_Limited_2023-2025">
+      <h3>V-Experian_Limited_2023-2025</h3>
+      <p>Experian annual-report and bank-workbook task. This one has a prompt preview only here because no rubric file is available yet.</p>
+      <div class="path-row">
+        <code>workdocs/V-Experian_Limited_2023-2025/Prompt.txt</code>
+        <code>workdocs/V-Experian_Limited_2023-2025/Rubrics.txt</code>
+        <code>workdocs/V-Experian_Limited_2023-2025/Files/</code>
+      </div>
+      <div class="links">
+        <a class="btn primary" href="workdocs/V-Experian_Limited_2023-2025/Prompt.txt" target="_blank" rel="noopener noreferrer">Open Prompt</a>
+        <span class="btn disabled" title="Rubric not provided yet">No rubric yet</span>
+        <a class="btn" href="workdocs/V-Experian_Limited_2023-2025/Files/" target="_blank" rel="noopener noreferrer">Open Files folder</a>
+      </div>
+    </article>
+
+    <article class="workdoc-card" data-workdoc="V-Finnish_Property_Prices">
+      <h3>V-Finnish_Property_Prices</h3>
+      <p>Finnish property-price and Unilever IFRS misalignment task. The prompt asks which dataset fields are unsupported or misleading for company-reporting claims.</p>
+      <div class="path-row">
+        <code>workdocs/V-Finnish_Property_Prices/Prompt.txt</code>
+        <code>workdocs/V-Finnish_Property_Prices/Rubrics.txt</code>
+        <code>workdocs/V-Finnish_Property_Prices/Files/</code>
+      </div>
+      <div class="links">
+        <a class="btn primary" href="workdocs/V-Finnish_Property_Prices/Prompt.txt" target="_blank" rel="noopener noreferrer">Open Prompt</a>
+        <a class="btn" href="workdocs/V-Finnish_Property_Prices/Rubrics.txt" target="_blank" rel="noopener noreferrer">Open Rubrics</a>
+        <a class="btn" href="workdocs/V-Finnish_Property_Prices/Files/" target="_blank" rel="noopener noreferrer">Open Files folder</a>
+      </div>
+    </article>
+
+    <article class="workdoc-card" data-workdoc="V-Stock_Performance_Analysis">
+      <h3>V-Stock_Performance_Analysis</h3>
+      <p>Garmin-vs-GoPro stock-performance task. The prompt asks for comparative performance, volatility, risk, volume, and momentum conclusions supported by calculations.</p>
+      <div class="path-row">
+        <code>workdocs/V-Stock_Performance_Analysis/Prompt.txt</code>
+        <code>workdocs/V-Stock_Performance_Analysis/Rubrics.txt</code>
+        <code>workdocs/V-Stock_Performance_Analysis/Files/</code>
+      </div>
+      <div class="links">
+        <a class="btn primary" href="workdocs/V-Stock_Performance_Analysis/Prompt.txt" target="_blank" rel="noopener noreferrer">Open Prompt</a>
+        <a class="btn" href="workdocs/V-Stock_Performance_Analysis/Rubrics.txt" target="_blank" rel="noopener noreferrer">Open Rubrics</a>
+        <a class="btn" href="workdocs/V-Stock_Performance_Analysis/Files/" target="_blank" rel="noopener noreferrer">Open Files folder</a>
+      </div>
+    </article>
+
+  </div>
+
+  <aside class="doc-preview rich" id="workdoc-preview">
+    <div class="preview-head">
+      <div>
+        <div class="doc-label">Selected workdocs task</div>
+        <h3 id="workdoc-title">V-CBOB-Ukraine</h3>
+      </div>
+      <div class="rubric-summary" id="rubric-summary">Loading rubric…</div>
+    </div>
+    <p class="doc-note" id="workdoc-note">Prompt questions and rubrics are embedded directly for this demo, so switching tasks works even when opening the HTML locally. The path buttons still point to the expected files inside the shared <code>multimodal</code> folder; Experian currently has no rubric preview.</p>
+
+    <div class="doc-tabs" aria-label="Workdocs preview tabs">
+      <button class="doc-tab active" type="button" data-doc-view="prompt">Prompt questions</button>
+      <button class="doc-tab" type="button" data-doc-view="rubric">Parsed rubrics</button>
+      <button class="doc-tab" type="button" data-doc-view="raw">Raw files</button>
+    </div>
+
+    <section class="doc-view active" id="prompt-view">
+      <ol class="question-list" id="prompt-list"></ol>
+    </section>
+
+    <section class="doc-view" id="rubric-view">
+      <div class="table-wrap">
+        <table class="rubric-table">
+          <thead><tr><th>Q</th><th>Weight</th><th>Expected criterion</th><th>Status</th></tr></thead>
+          <tbody id="rubric-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="doc-view" id="raw-view">
+      <h4>Prompt.txt</h4>
+      <pre id="raw-prompt"></pre>
+      <h4>Rubrics.txt</h4>
+      <pre id="raw-rubric"></pre>
+    </section>
+  </aside>
+</section>
+</div>
+<div class="task-panel" id="general-vqa-panel">
+<section class="vqa-hero">
+  <div class="intro-kicker">General VQA demo</div>
+  <h2>Question answering over charts, STEM diagrams, and natural images</h2>
+  <p>This tab displays the <code>image-qa</code> examples directly. Each example folder contains a PNG image and a paired JSON file with the evaluation question and ground-truth answer. The set covers scientific chart reasoning, STEM visual reasoning, and general natural-image/document VQA.</p>
+  <div class="vqa-stats">
+    <span class="vqa-stat">4 chart reasoning examples</span>
+    <span class="vqa-stat">3 STEM VQA examples</span>
+    <span class="vqa-stat">4 general VQA examples</span>
+    <span class="vqa-stat">Question + answer shown inline</span>
+  </div>
+</section>
+
+  <section class="vqa-category-block">
+    <div class="vqa-category-head">
+      <div>
+        <h3>Scientific chart reasoning</h3>
+        <p>Charts, tables, and plotted scientific data requiring numerical or comparative reasoning.</p>
+      </div>
+      <p class="vqa-category-count">4 examples</p>
+    </div>
+    <div class="vqa-grid">
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/chartqa_1/chartqa_1.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/chartqa_1/chartqa_1.png" alt="chartqa_1 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">chartqa_1</div><div class="vqa-pill">Scientific chart reasoning</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Question: Based on Figure 5, what is the difference between the total Amplified percentage in Gendered Occupation and the total Amplified percentage in Organizational Power? Round down to the nearest percentage.</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">25%</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/chartqa_1/chartqa_1.json</code>
+            <code>image-qa/chartqa_1/chartqa_1.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/chartqa_1/chartqa_1.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/chartqa_1/chartqa_1.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/chartqa_2/chartqa_2.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/chartqa_2/chartqa_2.png" alt="chartqa_2 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">chartqa_2</div><div class="vqa-pill">Scientific chart reasoning</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Which activity reached the highest score after the experiment while also starting below 2.0 at the beginning of the experiment?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Students&#x27; self-preparation for lessons</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/chartqa_2/chartqa_2.json</code>
+            <code>image-qa/chartqa_2/chartqa_2.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/chartqa_2/chartqa_2.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/chartqa_2/chartqa_2.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/chartqa_3/chartqa_3.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/chartqa_3/chartqa_3.png" alt="chartqa_3 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">chartqa_3</div><div class="vqa-pill">Scientific chart reasoning</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">In what month did Umifenovir outperform Remdesivir across two of the three testing techniques?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">June</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/chartqa_3/chartqa_3.json</code>
+            <code>image-qa/chartqa_3/chartqa_3.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/chartqa_3/chartqa_3.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/chartqa_3/chartqa_3.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/chartqa_4/chartqa_4.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/chartqa_4/chartqa_4.png" alt="chartqa_4 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">chartqa_4</div><div class="vqa-pill">Scientific chart reasoning</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">According to Table 1, which income type is received by fewer than 5% of households but has an average income below 50,000 HUF among those receiving it?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Vocational training scholarship</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/chartqa_4/chartqa_4.json</code>
+            <code>image-qa/chartqa_4/chartqa_4.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/chartqa_4/chartqa_4.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/chartqa_4/chartqa_4.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+  <section class="vqa-category-block">
+    <div class="vqa-category-head">
+      <div>
+        <h3>STEM VQA</h3>
+        <p>Chemistry and science diagrams/tables requiring domain reasoning.</p>
+      </div>
+      <p class="vqa-category-count">3 examples</p>
+    </div>
+    <div class="vqa-grid">
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/stemvqa_1/stemvqa_1.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/stemvqa_1/stemvqa_1.png" alt="stemvqa_1 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">stemvqa_1</div><div class="vqa-pill">STEM VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">What is the correct order of increasing acidity for the given carboxylic acids? Answer with the numbers separated by &#x27;&lt;&#x27;. For example: 1&lt;2&lt;3&lt;4.</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">2&lt;1&lt;3&lt;4</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/stemvqa_1/stemvqa_1.json</code>
+            <code>image-qa/stemvqa_1/stemvqa_1.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/stemvqa_1/stemvqa_1.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/stemvqa_1/stemvqa_1.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/stemvqa_2/stemvqa_2.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/stemvqa_2/stemvqa_2.png" alt="stemvqa_2 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">stemvqa_2</div><div class="vqa-pill">STEM VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Based on the diagram, what kind of bonding is shown in the reaction?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Covalent bond</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/stemvqa_2/stemvqa_2.json</code>
+            <code>image-qa/stemvqa_2/stemvqa_2.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/stemvqa_2/stemvqa_2.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/stemvqa_2/stemvqa_2.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/stemvqa_3/stemvqa_3.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/stemvqa_3/stemvqa_3.png" alt="stemvqa_3 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">stemvqa_3</div><div class="vqa-pill">STEM VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Given the data in the table, which molecule is the reactant and which is the product? Answer with the names separated by a comma. For example: X, Y.</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">A, B</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/stemvqa_3/stemvqa_3.json</code>
+            <code>image-qa/stemvqa_3/stemvqa_3.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/stemvqa_3/stemvqa_3.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/stemvqa_3/stemvqa_3.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+  <section class="vqa-category-block">
+    <div class="vqa-category-head">
+      <div>
+        <h3>General VQA</h3>
+        <p>Natural/document-style images requiring visual reading, counting, schedule, or spatial reasoning.</p>
+      </div>
+      <p class="vqa-category-count">4 examples</p>
+    </div>
+    <div class="vqa-grid">
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/generalvqa_1/generalvqa_1.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/generalvqa_1/generalvqa_1.png" alt="generalvqa_1 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">generalvqa_1</div><div class="vqa-pill">General VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Which module has the highest quiz score among the modules that are not yet completed?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Classroom Management</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/generalvqa_1/generalvqa_1.json</code>
+            <code>image-qa/generalvqa_1/generalvqa_1.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/generalvqa_1/generalvqa_1.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/generalvqa_1/generalvqa_1.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/generalvqa_2/generalvqa_2.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/generalvqa_2/generalvqa_2.png" alt="generalvqa_2 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">generalvqa_2</div><div class="vqa-pill">General VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">Which type of visual structure appears most frequently among the student identity maps displayed on the wall? Answer with the one letter corresponding to your choice:
+(A) Timeline map
+(B) Venn diagram
+(C) Concept map
+(D) Flowchart
+(E) Mind map
+(F) Double bubble map</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">E</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/generalvqa_2/generalvqa_2.json</code>
+            <code>image-qa/generalvqa_2/generalvqa_2.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/generalvqa_2/generalvqa_2.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/generalvqa_2/generalvqa_2.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/generalvqa_3/generalvqa_3.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/generalvqa_3/generalvqa_3.png" alt="generalvqa_3 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">generalvqa_3</div><div class="vqa-pill">General VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">This classroom chart assigns seating to 3 groups (A, B, and C), each with an individual holding a special role (Group Leader, Time Keeper, or Materials Manager). Which role is most common among the odd-numbered tables?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Group Leader</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/generalvqa_3/generalvqa_3.json</code>
+            <code>image-qa/generalvqa_3/generalvqa_3.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/generalvqa_3/generalvqa_3.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/generalvqa_3/generalvqa_3.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+      <article class="vqa-card">
+        <a class="vqa-image-link" href="image-qa/generalvqa_4/generalvqa_4.png" target="_blank" rel="noopener noreferrer">
+          <img class="vqa-image" src="image-qa/generalvqa_4/generalvqa_4.png" alt="generalvqa_4 image" loading="lazy">
+        </a>
+        <div class="vqa-card-body">
+          <div class="vqa-meta"><div class="vqa-id">generalvqa_4</div><div class="vqa-pill">General VQA</div></div>
+          <div class="qa-block">
+            <div><div class="qa-label">Question</div><div class="qa-text">What day of the week are kid&#x27;s programs scheduled weekly in the month shown?</div></div>
+            <div><div class="qa-label">Answer</div><div class="qa-answer">Thursday</div></div>
+          </div>
+          <div class="vqa-paths">
+            <code>image-qa/generalvqa_4/generalvqa_4.json</code>
+            <code>image-qa/generalvqa_4/generalvqa_4.png</code>
+          </div>
+          <div class="links">
+            <a class="btn primary" href="image-qa/generalvqa_4/generalvqa_4.png" target="_blank" rel="noopener noreferrer">Open image</a>
+            <a class="btn" href="image-qa/generalvqa_4/generalvqa_4.json" target="_blank" rel="noopener noreferrer">Open JSON</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</div>
+
+<footer>
+      Notes: the images and workdocs links are referenced relative to this HTML file. Place this file at the top of the shared `multimodal` folder and serve that folder with a static server to preview.
+    </footer>
+</div>
+
+<div aria-hidden="true" aria-label="Image preview with overlay" class="modal" id="image-modal" role="dialog">
+<div class="modal-panel">
+<div class="modal-top">
+<div class="modal-title" id="modal-title">Image preview</div>
+<button class="close" id="modal-close" type="button">Close</button>
+</div>
+<div class="modal-stage" id="modal-stage">
+<img alt="Full screenshot preview" id="modal-img"/>
+<div class="oracle-box" hidden="" id="modal-box"></div>
+</div>
+</div>
+</div>
+
+
+<script type="application/json" id="embedded-workdocs-data">{"V-CBOB-Ukraine": {"prompt": "1\tUsing both CBOB statements, determine the year-end asset gain between $3,515,681,972 and $3,527,519,290.\n2\tUsing both CBOB statements, express the movement from November total assets to December total assets as a percentage change.\n3\tUsing the CBOB foreign asset totals, show how much the foreign portfolio expanded from $2,474,822,884 to $2,511,681,379.\n4\tUsing the CBOB local asset totals, identify the size of the pullback from $1,040,859,088 to $1,015,837,911.\n5\tUsing the CBOB demand liability totals, measure the decline from $2,806,901,886 to $2,783,760,887.\n6\tUsing the capital and reserves figures, determine how much CBOB’s reserve base strengthened from $292,455,010 to $302,113,467.\n7\tUsing the notes-in-circulation figures, identify the increase from $542,220,301 to $582,430,017.\n8\tUsing the Sand Dollar figures, find the rise from $1,461,935 to $1,691,858.\n9\tUsing the Sand Dollar figures, express the rise from $1,461,935 to $1,691,858 as a percentage growth rate.\n10\tUsing the Bahamas Government Advances figures, determine the size of the drop from $337,546,100 to $192,046,100.\n11\tUsing Bahamas Government Registered Stock, show the increase from $366,432,877 to $470,019,637.\n12\tUsing Bahamas Government Treasury Bills, identify the expansion from $32,788,914 to $45,664,096.\n13\tUsing commercial banks’ deposits, determine the movement from $2,069,692,630 to $2,068,810,560.\n14\tUsing deposits by government agencies, identify the decline from $72,745,032 to $49,834,997.\n15\tUsing Bahamas Government Designated Accounts, determine the fall from $73,266,587 to $34,664,423.\n16\tUsing other liabilities, show the increase from $416,325,076 to $441,644,936.\n17\tUsing Other Reserves, identify the reserve increase from $114,855,090 to $124,513,547.\n18\tUsing December CBOB figures, determine what share of total assets was represented by foreign assets of $2,511,681,379 out of $3,527,519,290.\n19\tUsing December CBOB figures, determine what share of total assets was represented by local assets of $1,015,837,911 out of $3,527,519,290.\n20\tUsing December CBOB asset figures, determine the gap between foreign assets of $2,511,681,379 and local assets of $1,015,837,911.", "rubric": "Task: V-CBOB-Ukraine Year-End Banking Shift\nRealm Task ID: 1790\nRun ID: ad1e9b9b-618f-4076-9cb3-d1c100070e31\nOverall Result: 9.71%\n========================================================================\n\n[criterion_1] q1 (weight 3)\n  Criterion: The response states that total assets increased by $11,837,318\n  Pass/Fail: PASS\n\n[criterion_2] q2 (weight 5)\n  Criterion: The response states that total assets grew by 7.34%\n  Pass/Fail: FAIL\n\n[criterion_3] q3 (weight 4.5)\n  Criterion: The response states that foreign assets increased by $6,858,495\n  Pass/Fail: FAIL\n\n[criterion_4] q4 (weight 3.5)\n  Criterion: The response states that local assets decreased by $2,021,177\n  Pass/Fail: FAIL\n\n[criterion_5] q5 (weight 3)\n  Criterion: The response states that demand liabilities decreased by $2,140,999\n  Pass/Fail: FAIL\n\n[criterion_6] q6 (weight 7)\n  Criterion: The response states that capital and reserves increased by $7,658,457\n  Pass/Fail: FAIL\n\n[criterion_7] q7 (weight 4)\n  Criterion: The response states that notes in circulation increased by $4,209,716\n  Pass/Fail: FAIL\n\n[criterion_8] q8 (weight 5.5)\n  Criterion: The response states that Sand Dollars in circulation increased by $229,923\n  Pass/Fail: PASS\n\n[criterion_9] q9 (weight 7)\n  Criterion: The response states that Sand Dollars in circulation grew by 1.73%\n  Pass/Fail: FAIL\n\n[criterion_10] q10 (weight 3.5)\n  Criterion: The response states that Bahamas Government Advances decreased by $5,500,000\n  Pass/Fail: FAIL\n\n[criterion_11] q11 (weight 4)\n  Criterion: The response states that Bahamas Government Registered Stock increased by $3,586,760\n  Pass/Fail: FAIL\n\n[criterion_12] q12 (weight 3.5)\n  Criterion: The response states that Bahamas Government Treasury Bills increased by $2,875,182\n  Pass/Fail: FAIL\n\n[criterion_13] q13 (weight 3)\n  Criterion: The response states that commercial banks’ deposits decreased by $282,070\n  Pass/Fail: FAIL\n\n[criterion_14] q14 (weight 6)\n  Criterion: The response states that deposits by government agencies decreased by $2,910,035\n  Pass/Fail: FAIL\n\n[criterion_15] q15 (weight 4.5)\n  Criterion: The response states that Bahamas Government Designated Accounts decreased by $8,602,164\n  Pass/Fail: FAIL\n\n[criterion_16] q16 (weight 3.5)\n  Criterion: The response states that other liabilities increased by $5,319,860\n  Pass/Fail: FAIL\n\n[criterion_17] q17 (weight 4.5)\n  Criterion: The response states that Other Reserves increased by $1,658,457\n  Pass/Fail: FAIL\n\n[criterion_18] q18 (weight 5)\n  Criterion: The response states that December foreign-assets share was 1.20%\n  Pass/Fail: FAIL\n\n[criterion_19] q19 (weight 4)\n  Criterion: The response states that December local-assets share was 6.16%\n  Pass/Fail: FAIL\n\n[criterion_20] q20 (weight 3.5)\n  Criterion: The response states that December foreign assets exceeded local assets by $495,803,442\n  Pass/Fail: FAIL\n"}, "V-Experian_Limited_2023-2025": {"prompt": "I'm a junior financial analyst and trying to find unique statistical trends in attached 2023-2025 annual reports. Help me to find answers for the following questions:\n\n1. Using the 2023, 2024 and 2025 Experian Limited reports together with the 2025 Indian scheduled commercial bank workbook, calculate a \"four-file scale-adjusted growth pressure\" number as follows: take Experian's turnover for 2023, 2024 and 2025, calculate the two year-on-year turnover growth rates, average them, then divide that average growth rate by the median 2025 ratio of \"Total Assets\" to \"Deposits\" for all banks in the workbook where both fields are available. What is the resulting number?\n\n2. Using all four files, calculate a \"profit durability versus bank liquidity\" number: take Experian's profit after tax for 2023, 2024 and 2025, use a 3-year moving average of those profits, divide it by the median 2025 bank value of \"Balances with RBI\" as a proportion of \"Total Assets\", and report the final number.\n\n3. Using all four files, calculate an \"operating efficiency and funding mix\" number: for Experian, calculate staff costs as a percentage of turnover for 2023, 2024 and 2025, take the median of those three percentages, then multiply it by the median 2025 bank ratio of \"Term deposits\" to \"Deposits\". What is the final percentage?\n\n4. Using all four files, calculate a \"capital-light growth comparison\" number: take Experian's 2023 to 2025 compound annual growth rate in turnover, then compare it with the median 2025 bank ratio of \"Capital\" plus \"Reserves and Surplus\" to \"Total Liabilities\". Divide the Experian growth rate by that median bank capital-support ratio. What is the resulting multiple?\n\n5. Using all four files, calculate a \"risk-adjusted asset productivity\" number: take Experian's 3-year median operating profit margin across 2023, 2024 and 2025, multiply it by the median 2025 bank ratio of \"Advances\" to \"Total Assets\", then divide the result by the 3-year moving average of Experian's profit after tax margin. What is the final number?\n\n6. A credit analyst expects the same files to include Experian's 2025 revenue split for \"North America\" and wants to adjust the four-file scale-adjusted growth pressure number by that North America revenue share. What exact adjusted number can be calculated from the files, or what single phrase should be reported if that regional revenue split is not provided?\n\n7. Using the profit durability versus bank liquidity number and fresh values from the reports, calculate a \"tax drag adjusted liquidity score\": take Experian's tax charge as a percentage of profit before tax for 2025, subtract the same percentage for 2024, then multiply the difference by the profit durability versus bank liquidity number. What is the final score?\n\n8. Using the operating efficiency and funding mix number, calculate an \"expense momentum score\": take the change in Experian's staff-cost-to-turnover percentage from 2024 to 2025, then multiply it by the operating efficiency and funding mix number. What is the final number?\n\n9. Using the capital-light growth comparison number and fresh bank data from the workbook, calculate a \"large-bank balance-sheet overlay\": take the median 2025 \"Total Assets\" for banks whose \"Deposits\" are above the median 2025 deposit value, divide that by the median 2025 \"Total Assets\" for banks whose \"Deposits\" are below the median, then multiply by the capital-light growth comparison number. What is the resulting multiple?\n\n10. Using the risk-adjusted asset productivity number, calculate a \"borrowings sensitivity\" score: find the median 2025 bank ratio of \"Borrowings\" to \"Total Liabilities\", then multiply it by the risk-adjusted asset productivity number and by Experian's 2025 operating profit margin. What is the final score?\n\n11. A strategy analyst expects the files to provide Mastercard's 2025 UK transaction revenue and wants to compare it with Experian's turnover trend before applying the expense momentum score. What exact numeric comparison can be calculated from the files, or what single phrase should be reported if Mastercard data is not present?\n\n12. Using the tax drag adjusted liquidity score and the large-bank balance-sheet overlay, calculate a \"combined resilience spread\": subtract the tax drag adjusted liquidity score from the large-bank balance-sheet overlay, then divide the result by Experian's 2025 profit after tax margin. What is the final number?\n\n13. Using the combined resilience spread and fresh Experian balance sheet figures, calculate a \"shareholder funds intensity score\": take Experian's 2025 total shareholder funds divided by 2025 turnover, then multiply by the combined resilience spread. What is the resulting score?\n\n14. Using the shareholder funds intensity score and fresh bank data, calculate a \"deposit concentration adjusted Experian score\": multiply the shareholder funds intensity score by the median 2025 bank ratio of \"Savings bank deposits\" to \"Deposits\", then divide by Experian's 2025 operating profit margin. What is the final number?\n\n15. Using the deposit concentration adjusted Experian score, calculate a final \"analyst caution index\": add Experian's 2025 tax charge as a percentage of profit before tax, subtract the 2025 median bank ratio of \"Cash in hand\" to \"Total Assets\", then multiply by the deposit concentration adjusted Experian score. What is the final index?", "rubric": ""}, "V-Finnish_Property_Prices": {"prompt": "1. Which regional property-price category would be misleading for assessing Unilever’s goodwill impairment assumptions?\n2. Which dwelling-type field would be unsupported as evidence for Unilever’s revenue recognition policy?\n3. Which residential price index unit would be misleading for evaluating Unilever’s brand valuation methodology?\n4. Which frequency classification would be inappropriate for interpreting Unilever’s segment reporting?\n5. Which Finnish geographic breakdown would be unsupported for assessing Unilever’s foreign exchange risk exposure?\n6. Which property vintage category would be misleading for evaluating Unilever’s inventory accounting?\n7. Which dwelling-market category would be unsupported as an input to Unilever’s expected credit loss assessment?\n8. Which price-unit category would be misleading for assessing Unilever’s lease liability measurement?\n9. Which national property-price category would be inappropriate for Unilever’s tax provision analysis?\n10. Which Finnish residential market label would be misleading for Unilever’s pension obligation assumptions?\n11. Which real estate price field would be unsupported for interpreting Unilever’s cost of sales disclosure?\n12. Which property-price observation status would be inappropriate for evaluating Unilever’s audit opinion?\n13. Which confidentiality classification would be misleading for assessing Unilever’s related-party disclosures?\n14. Which compiling-agency category would be unsupported for Unilever’s internal control reporting?\n15. Which Finnish residential index period would be misleading for Unilever’s going-concern assessment?\n16. Which residential property index measure would be inappropriate for Unilever’s dividend policy analysis?\n17. Which seasonal-adjustment category would be unsupported for Unilever’s commodity price risk disclosure?\n18. Which Finnish reference-area field would be misleading for Unilever’s legal entity consolidation?\n19. Which property-price dataflow identifier would be inappropriate for Unilever’s IFRS compliance review?\n20. Which residential property key structure would be unsupported for Unilever’s ownership analysis?", "rubric": "Task: V-Finnish Property Prices & Unilever IFRS Misalignment\nRealm Task ID: 1768\nRun ID: ae715e47-5f91-4aa0-8759-bfdc28448b93\nOverall Result: 0%\n========================================================================\n\n[criterion_1] q1 (weight 15)\n  Criterion: The response states that covered area is not the reported assumption label for Unilever’s goodwill impairment testing.\n  Pass/Fail: FAIL\n\n[criterion_2] q2 (weight 14)\n  Criterion: The response states that real estate type is not the disclosure label used for Unilever’s revenue recognition policy.\n  Pass/Fail: FAIL\n\n[criterion_3] q3 (weight 13)\n  Criterion: The response states that index base value is not the modelling parameter for Unilever’s brand valuation methodology.\n  Pass/Fail: FAIL\n\n[criterion_4] q4 (weight 12)\n  Criterion: The response states that monthly frequency is not the line item used to classify Unilever’s operating segments.\n  Pass/Fail: FAIL\n\n[criterion_5] q5 (weight 11)\n  Criterion: The response states that whole country excluding capital city is not the source category used to parameterize Unilever’s foreign exchange risk exposure.\n  Pass/Fail: FAIL\n\n[criterion_6] q6 (weight 10)\n  Criterion: The response states that existing dwellings is not the classification label for Unilever’s inventory accounting policy.\n  Pass/Fail: FAIL\n\n[criterion_7] q7 (weight 10)\n  Criterion: The response states that flats are not the named variable in Unilever’s expected credit loss assessment.\n  Pass/Fail: FAIL\n\n[criterion_8] q8 (weight 9)\n  Criterion: The response states that per square meter is not the dataset field for Unilever’s lease liability measurement.\n  Pass/Fail: FAIL\n\n[criterion_9] q9 (weight 9)\n  Criterion: The response states that all types of dwellings is not the reported assumption label for Unilever’s tax provision analysis.\n  Pass/Fail: FAIL\n\n[criterion_10] q10 (weight 8)\n  Criterion: The response states that terraced houses is not the modelling parameter for Unilever’s pension obligation assumptions.\n  Pass/Fail: FAIL\n\n[criterion_11] q11 (weight 8)\n  Criterion: The response states that pure price is not the line item used to calculate Unilever’s cost of sales.\n  Pass/Fail: FAIL\n\n[criterion_12] q12 (weight 7)\n  Criterion: The response states that normal value is not the disclosure label used for Unilever’s audit opinion.\n  Pass/Fail: FAIL\n\n[criterion_13] q13 (weight 7)\n  Criterion: The response states that free confidentiality status is not the classification label for Unilever’s related-party disclosures.\n  Pass/Fail: FAIL\n\n[criterion_14] q14 (weight 6)\n  Criterion: The response states that National Statistical Office is not the stated basis for Unilever’s internal control reporting.\n  Pass/Fail: FAIL\n\n[criterion_15] q15 (weight 6)\n  Criterion: The response states that time period is not the dataset field for Unilever’s going-concern assessment.\n  Pass/Fail: FAIL\n\n[criterion_16] q16 (weight 5)\n  Criterion: The response states that observation value is not the line item used to calculate Unilever’s dividend policy.\n  Pass/Fail: FAIL\n\n[criterion_17] q17 (weight 4)\n  Criterion: The response states that non seasonally adjusted is not the source category used to parameterize Unilever’s commodity price risk disclosure.\n  Pass/Fail: FAIL\n\n[criterion_18] q18 (weight 3)\n  Criterion: The response states that Finland is not the named variable in Unilever’s legal entity consolidation assessment.\n  Pass/Fail: FAIL\n\n[criterion_19] q19 (weight 2)\n  Criterion: The response states that BIS WS_DPP is not the disclosure label used for Unilever’s IFRS compliance review.\n  Pass/Fail: FAIL\n\n[criterion_20] q20 (weight 1)\n  Criterion: The response states that timeseries key is not the classification label for Unilever’s ownership analysis.\n  Pass/Fail: FAIL\n"}, "V-Stock_Performance_Analysis": {"prompt": "Which stock performed better overall, and what supporting data confirms this conclusion?\nWhich stock had a bigger drop, and what supporting data verifies this observation?\nWhich stock is more volatile, and what supporting data demonstrates this?\nWhich stock traded more volume, and what supporting data confirms this difference?\nWhich stock grew more over time, and what supporting data validates this conclusion?\nWhich stock is riskier, and what supporting data substantiates this assessment?\nWhich stock is more stable, and what supporting data supports this conclusion?\nWhich stock has more extreme movements, and what supporting data confirms this?\nWhich stock behaves more unpredictably, and what supporting data demonstrates this behavior?\nWhich stock shows stronger price swings, and what supporting data supports this comparison?\nWhich stock has more downside risk, and what supporting data validates this conclusion?\nWhich stock has better performance relative to risk, and what supporting data justifies this result?\nWhich stock has stronger momentum, and what supporting data confirms this finding?\nWhich stock has more irregular behavior, and what supporting data supports this assessment?\nWhich stock is better for long-term growth, and what supporting data validates this conclusion?", "rubric": "Task: V-Stock Performance Analysis between Garmin and GoPro\nRealm Task ID: 1732\nRun ID: ea9ce4d5-3ca2-482e-874b-4440847fa82d\nOverall Result: 24.46%\n========================================================================\n\n[criterion_1] 1 (weight 4)\n  Criterion: The response reports Garmin cumulative return within 440.0% to 460.0%.\n  Pass/Fail: FAIL\n\n[criterion_2] 1 (weight 5)\n  Criterion: The response reports GoPro cumulative return within −99.0% to −95.0%.\n  Pass/Fail: PASS\n\n[criterion_3] 2 (weight 4)\n  Criterion: The response reports Garmin minimum daily return within −15.5% to −14.5%.\n  Pass/Fail: PASS\n\n[criterion_4] 2 (weight 5)\n  Criterion: The response reports GoPro minimum daily return within −27.0% to −25.0%.\n  Pass/Fail: PASS\n\n[criterion_5] 3 (weight 6)\n  Criterion: The response reports Garmin volatility within 0.0175 to 0.0185.\n  Pass/Fail: FAIL\n\n[criterion_6] 3 (weight 6)\n  Criterion: The response reports GoPro volatility within 0.0400 to 0.0420.\n  Pass/Fail: FAIL\n\n[criterion_7] 4 (weight 5)\n  Criterion: The response avoids using peak volume as proxy\n  Pass/Fail: PASS\n\n[criterion_8] 5 (weight 4)\n  Criterion: The response reports Garmin growth exceeding 440.0%.\n  Pass/Fail: FAIL\n\n[criterion_9] 6 (weight 8)\n  Criterion: The response identifies GoPro volatility exceeding Garmin by more than 100% relative difference\n  Pass/Fail: PASS\n\n[criterion_10] 7 (weight 4)\n  Criterion: The response reports Garmin volatility below 0.0185.\n  Pass/Fail: FAIL\n\n[criterion_11] 8 (weight 5)\n  Criterion: The response reports Garmin extreme movement within 22.0% to 24.0%.\n  Pass/Fail: PASS\n\n[criterion_12] 9 (weight 15)\n  Criterion: The response reports Garmin variance within 0.00030 to 0.00034.\n  Pass/Fail: FAIL\n\n[criterion_13] 9 (weight 15)\n  Criterion: The response reports GoPro variance within 0.00160 to 0.00175\n  Pass/Fail: FAIL\n\n[criterion_14] 10 (weight 12)\n  Criterion: The response reports Garmin mean absolute return within 0.0108 to 0.0119.\n  Pass/Fail: FAIL\n\n[criterion_15] 10 (weight 13)\n  Criterion: The response reports GoPro mean absolute return within 0.0260 to 0.0290.\n  Pass/Fail: FAIL\n\n[criterion_16] 11 (weight 5)\n  Criterion: The response reports Garmin downside within −15.5% to −14.5%.\n  Pass/Fail: PASS\n\n[criterion_17] 12 (weight 15)\n  Criterion: The response reports Garmin efficiency ratio within 24000 to 26000.\n  Pass/Fail: FAIL\n\n[criterion_18] 12 (weight 15)\n  Criterion: The response reports GoPro efficiency ratio within −2600 to −2200.\n  Pass/Fail: FAIL\n\n[criterion_19] 13 (weight 7)\n  Criterion: The response reports Garmin streak exceeding 5 trading days.\n  Pass/Fail: FAIL\n\n[criterion_20] 14 (weight 15)\n  Criterion: The response computes kurtosis of normalized returns.\n  Pass/Fail: FAIL\n\n[criterion_21] 14 (weight 8)\n  Criterion: The response reports GoPro kurtosis exceeding Garmin by more than +1.0 difference\n  Pass/Fail: FAIL\n\n[criterion_22] 15 (weight 8)\n  Criterion: The response compares cumulative return under mixed-sign conditions.\n  Pass/Fail: PASS\n"}}</script>
+<script>
+
+    document.querySelectorAll('.task-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.panel;
+        document.querySelectorAll('.task-tab').forEach((node) => node.classList.toggle('active', node === tab));
+        document.querySelectorAll('.task-panel').forEach((panel) => panel.classList.toggle('active', panel.id === target));
+        const screenspotActions = document.querySelector('.screenspot-only-actions');
+        if (screenspotActions) screenspotActions.hidden = target !== 'screenspot-panel';
+        if (target === 'screenspot-panel') updateSkillDemo();
+      });
+    });
+
+
+
+    const workdocTasks = [
+      'V-CBOB-Ukraine',
+      'V-Experian_Limited_2023-2025',
+      'V-Finnish_Property_Prices',
+      'V-Stock_Performance_Analysis'
+    ];
+    const embeddedWorkdocs = JSON.parse(document.getElementById('embedded-workdocs-data')?.textContent || '{}');
+    let activeWorkdoc = 'V-CBOB-Ukraine';
+
+    function parsePromptQuestions(text) {
+      const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const numbered = [];
+      let current = null;
+      const numberedPattern = /^(\d+)[\.)\t ]+(.+)$/;
+      for (const line of lines) {
+        const match = line.match(numberedPattern);
+        if (match) {
+          if (current) numbered.push(current.trim());
+          current = match[2].trim();
+        } else if (current) {
+          current += ' ' + line;
+        }
+      }
+      if (current) numbered.push(current.trim());
+      if (numbered.length) return numbered;
+      return lines;
+    }
+
+    function parseRubric(text) {
+      const rows = [];
+      const pattern = /\[criterion_\d+\]\s+q?(\d+)\s+\(weight\s+([\d.]+)\)\s+Criterion:\s*(.*?)\s+Pass\/Fail:\s*(PASS|FAIL)/gis;
+      let match;
+      while ((match = pattern.exec(String(text || ''))) !== null) {
+        rows.push({ q: Number(match[1]), weight: match[2], criterion: match[3].trim(), status: match[4].toUpperCase() });
+      }
+      const overall = String(text || '').match(/Overall Result:\s*([^\n]+)/i)?.[1]?.trim();
+      return { rows, overall };
+    }
+
+    function loadTextWithFallback(task, fileName) {
+      const key = fileName === 'Prompt.txt' ? 'prompt' : 'rubric';
+      return embeddedWorkdocs[task]?.[key] || '';
+    }
+
+    function setDocView(view) {
+      document.querySelectorAll('.doc-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.docView === view));
+      document.querySelectorAll('.doc-view').forEach(panel => panel.classList.toggle('active', panel.id === `${view}-view`));
+    }
+
+    function renderWorkdoc(task) {
+      activeWorkdoc = task;
+      document.getElementById('workdoc-title').textContent = task;
+      document.querySelectorAll('.workdoc-card').forEach(card => card.classList.toggle('selected', card.dataset.workdoc === task));
+      const promptText = loadTextWithFallback(task, 'Prompt.txt');
+      const rubricText = loadTextWithFallback(task, 'Rubrics.txt');
+      const questions = parsePromptQuestions(promptText);
+      const promptList = document.getElementById('prompt-list');
+      promptList.innerHTML = questions.length
+        ? questions.map(q => `<li>${escapeHTML(q)}</li>`).join('')
+        : `<li class="muted-li">Prompt preview unavailable. Use Open Prompt to inspect <code>workdocs/${escapeHTML(task)}/Prompt.txt</code>.</li>`;
+      const parsed = parseRubric(rubricText);
+      const body = document.getElementById('rubric-table-body');
+      body.innerHTML = parsed.rows.length
+        ? parsed.rows.map(row => `<tr><td>q${row.q}</td><td>${escapeHTML(row.weight)}</td><td>${escapeHTML(row.criterion)}</td><td><span class="status ${row.status === 'PASS' ? 'pass' : 'fail'}">${row.status}</span></td></tr>`).join('')
+        : `<tr><td colspan="4">Rubric preview unavailable for this task. If a Rubrics.txt file is added later, it will load from <code>workdocs/${escapeHTML(task)}/Rubrics.txt</code>.</td></tr>`;
+      document.getElementById('rubric-summary').textContent = parsed.rows.length
+        ? `Gemini-3.1-pro performance · ${parsed.rows.length} criteria${parsed.overall ? ` · ${parsed.overall}` : ''}`
+        : 'Rubric not loaded';
+      document.getElementById('raw-prompt').textContent = promptText || `No local preview loaded for workdocs/${task}/Prompt.txt`;
+      document.getElementById('raw-rubric').textContent = rubricText || `No local preview loaded for workdocs/${task}/Rubrics.txt`;
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+
+    document.querySelectorAll('.workdoc-card').forEach(card => {
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('a')) return;
+        renderWorkdoc(card.dataset.workdoc);
+      });
+    });
+
+    document.querySelectorAll('.doc-tab').forEach(btn => {
+      btn.addEventListener('click', () => setDocView(btn.dataset.docView));
+    });
+
+    function placeBox(box, bbox) {
+      if (!box || !bbox) return;
+      const parts = String(bbox).split(',').map(Number);
+      if (parts.length !== 4 || parts.some(Number.isNaN)) {
+        box.hidden = true;
+        return;
+      }
+      const [x1, y1, x2, y2] = parts;
+      box.style.left = x1 + '%';
+      box.style.top = y1 + '%';
+      box.style.width = Math.max(0, x2 - x1) + '%';
+      box.style.height = Math.max(0, y2 - y1) + '%';
+      box.hidden = false;
+    }
+
+    function initInlineBoxes() {
+      document.querySelectorAll('.oracle-box[data-bbox]').forEach((box) => {
+        placeBox(box, box.dataset.bbox);
+      });
+    }
+
+    const modal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalBox = document.getElementById('modal-box');
+    const modalTitle = document.getElementById('modal-title');
+    const modalClose = document.getElementById('modal-close');
+
+
+    const skillExamples = {
+      crop: {
+        caption: 'Crop a candidate region around the target',
+        build: ({image, bbox}) => {
+          const b = bbox || [19.76, 53.7, 27.57, 56.83];
+          const padded = padBox(b, 3);
+          return `./skills/screen-tools/scripts/crop.py ./screenshots/${fileName(image)} \\
+  --box ${fmt(padded[0])} ${fmt(padded[1])} ${fmt(padded[2])} ${fmt(padded[3])} \\
+  --out ./crops/${safeStem(image)}-crop.png`;
+        }
+      },
+      zoom: {
+        caption: 'Zoom around the center of the target',
+        build: ({image, bbox}) => {
+          const b = bbox || [19.76, 53.7, 27.57, 56.83];
+          const cx = (b[0] + b[2]) / 2;
+          const cy = (b[1] + b[3]) / 2;
+          return `./skills/screen-tools/scripts/zoom.py ./screenshots/${fileName(image)} \\
+  --center ${fmt(cx)} ${fmt(cy)} \\
+  --factor 4 \\
+  --out ./crops/${safeStem(image)}-zoom.png`;
+        }
+      },
+      annotate: {
+        caption: 'Draw a normalized coordinate grid over the screenshot',
+        build: ({image}) => `./skills/screen-tools/scripts/annotate.py ./screenshots/${fileName(image)} \\
+  --grid 10 \\
+  --out ./crops/${safeStem(image)}-grid.png`
+      },
+      answer: {
+        caption: 'Write the final strict JSON answer',
+        build: ({bbox}) => {
+          const b = bbox || [19.76, 53.7, 27.57, 56.83];
+          return `python - <<'PY'\nimport json\nanswer = {"bbox": [${b.map(fmt).join(', ')}]}\nwith open('./answer.json', 'w') as f:\n    json.dump(answer, f)\nPY`;
+        }
+      }
+    };
+
+    let activeSkill = 'crop';
+    let selectedCard = document.querySelector('article.card[data-bbox]');
+
+    function parseBbox(value) {
+      if (!value) return null;
+      const parts = String(value).split(',').map(Number);
+      return parts.length === 4 && parts.every(Number.isFinite) ? parts : null;
+    }
+
+    function fmt(value) {
+      return Number(value.toFixed(2)).toString();
+    }
+
+    function fileName(path) {
+      return String(path || 'screenshot.png').split('/').pop();
+    }
+
+    function safeStem(path) {
+      return fileName(path).replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'screenshot';
+    }
+
+    function padBox(box, pad) {
+      return [
+        Math.max(0, box[0] - pad),
+        Math.max(0, box[1] - pad),
+        Math.min(100, box[2] + pad),
+        Math.min(100, box[3] + pad)
+      ];
+    }
+
+    function getSkillContext() {
+      const image = selectedCard?.dataset.image || 'apply-filter-in-booking-com/environment/screenshots/Booking.com_Screenshot_2026-05-20.png';
+      const bbox = parseBbox(selectedCard?.dataset.bbox);
+      return {image, bbox};
+    }
+
+    function updateSkillDemo() {
+      const example = skillExamples[activeSkill];
+      const context = getSkillContext();
+      document.getElementById('skill-caption').textContent = example.caption;
+      document.getElementById('skill-command').textContent = example.build(context);
+      const bbox = context.bbox || [19.76, 53.7, 27.57, 56.83];
+      document.getElementById('answer-json').textContent = `{"bbox": [${bbox.map(fmt).join(', ')}]}`;
+    }
+
+    document.querySelectorAll('.skill-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        activeSkill = tab.dataset.skill;
+        document.querySelectorAll('.skill-tab').forEach((node) => node.classList.toggle('active', node === tab));
+        updateSkillDemo();
+      });
+    });
+
+    document.getElementById('copy-skill-command').addEventListener('click', async () => {
+      const text = document.getElementById('skill-command').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('copy-skill-command').textContent = 'Copied';
+        setTimeout(() => document.getElementById('copy-skill-command').textContent = 'Copy command', 1200);
+      } catch (_) {
+        window.prompt('Copy command:', text);
+      }
+    });
+
+    document.getElementById('load-card-command').addEventListener('click', updateSkillDemo);
+
+    document.addEventListener('click', (event) => {
+      const card = event.target.closest('article.card');
+      if (!card || !card.dataset.image) return;
+      selectedCard = card;
+      document.querySelectorAll('article.card').forEach((node) => node.classList.toggle('selected', node === card));
+      updateSkillDemo();
+    });
+
+    document.addEventListener('click', (event) => {
+      const opener = event.target.closest('.open-overlay');
+      if (!opener) return;
+      event.preventDefault();
+      const card = opener.closest('article.card');
+      const src = opener.dataset.image || opener.getAttribute('href');
+      const bbox = opener.dataset.bbox || card?.dataset.bbox;
+      modalImg.src = src;
+      modalImg.alt = card?.querySelector('.title')?.textContent?.trim() || 'Full screenshot preview';
+      modalTitle.textContent = src;
+      placeBox(modalBox, bbox);
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+
+    function closeModal() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      modalImg.removeAttribute('src');
+    }
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && modal.classList.contains('open')) closeModal();
+    });
+
+    if (selectedCard) selectedCard.classList.add('selected');
+    updateSkillDemo();
+    renderWorkdoc(activeWorkdoc);
+    initInlineBoxes();
+  </script>
+</body>
+</html>
